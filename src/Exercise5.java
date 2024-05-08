@@ -9,12 +9,14 @@ import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 
+import java.util.Set;
 import java.util.function.Predicate;
 
 public class Exercise5 extends Application {
@@ -25,6 +27,8 @@ public class Exercise5 extends Application {
 
 	private final GridPane filters = new GridPane();
 	private final TitledPane filterPane = new TitledPane("Filter", filters);
+
+	private final TableView<Recording> table = new TableView<>();
 
 	private final Spinner<Integer> minYearSpinner = new Spinner<>();
 
@@ -92,7 +96,6 @@ public class Exercise5 extends Application {
 	@Override
 	public void start(Stage primaryStage) {
 
-
 		rbCD.setId("rbCD");
 		rbLP.setId("rbLP");
 		rbBoth.setId("rbBoth");
@@ -105,6 +108,20 @@ public class Exercise5 extends Application {
 			updateFilters();
 		});
 		minYearSpinner.setId("minSpinner");
+		table.setId("table");
+		table.setItems(filteredList);
+		TableColumn<Recording, String> titleC = new TableColumn<Recording, String>("Title");
+		titleC.setCellValueFactory(new PropertyValueFactory<>("title"));
+		TableColumn<Recording, String> artistC = new TableColumn<Recording, String>("Artist");
+		artistC.setCellValueFactory(new PropertyValueFactory<>("artist"));
+		TableColumn<Recording, Integer> yearC = new TableColumn<>("Year");
+		yearC.setCellValueFactory(new PropertyValueFactory<>("year"));
+		TableColumn<Recording, String> typeC = new TableColumn<>("Type");
+		typeC.setCellValueFactory(new PropertyValueFactory<>("type"));
+		TableColumn<Recording, Set<String>> genreC = new TableColumn<>("Genre");
+		genreC.setCellValueFactory(new PropertyValueFactory<>("genre"));
+
+		table.getColumns().setAll(titleC,artistC, yearC, typeC, genreC);
 
 		Button resetButton = new Button("Reset filters");
 		resetButton.setId("resetButton");
@@ -155,6 +172,7 @@ public class Exercise5 extends Application {
 
 		BorderPane bp = new BorderPane();
 		bp.setTop(fp);
+		bp.setCenter(table);
 
 		bp.setBottom(filterPane);
 
