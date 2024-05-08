@@ -75,8 +75,7 @@ public class Exercise5 extends Application {
 			if (value == null || value.isEmpty()) {
 				return true;
 			}
-
-			return recording.getArtist().contains(value);
+			return recording.getArtist().toUpperCase().startsWith(value.toUpperCase());
 		}
 	};
 
