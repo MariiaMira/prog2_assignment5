@@ -217,5 +217,3 @@ public class Exercise5 extends Application {
 		}
 	}
 }
-
-//hej
