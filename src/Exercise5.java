@@ -35,6 +35,7 @@ public class Exercise5 extends Application {
 	private final ListView<String> genreListView = new ListView<>(FXCollections.observableList(db.getGenres()));
 
 	private final TextField artistFilterField = new TextField();
+	private final TextField titleFilterField = new TextField();
 
 	private final ToggleGroup toggle = new ToggleGroup();
 	private final RadioButton rbCD = new RadioButton("CD");
@@ -79,6 +80,19 @@ public class Exercise5 extends Application {
 		}
 	};
 
+	private final Predicate<Recording> titleFilter = new Predicate<>() {
+		@Override
+		public boolean test(Recording recording) {
+
+			var value = titleFilterField.getText();
+
+			if (value == null || value.isEmpty()) {
+				return true;
+			}
+			return recording.getTitle().toUpperCase().startsWith(value.toUpperCase());
+		}
+	};
+
 	private final Predicate<Recording> genreFilter = new Predicate<>() {
 		@Override
 		public boolean test(Recording recording) {
@@ -101,6 +115,8 @@ public class Exercise5 extends Application {
 
 		artistFilterField.textProperty().addListener((observable, oldValue, newValue) -> updateFilters());
 		artistFilterField.setId("artistField");
+		titleFilterField.textProperty().addListener((observable, oldValue, newValue) -> updateFilters());
+		titleFilterField.setId("titleField");
 
 		minYearSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1950, 2020, 1950));
 		minYearSpinner.valueProperty().addListener((observableValue, oldValue, newValue) -> {
@@ -127,6 +143,7 @@ public class Exercise5 extends Application {
 		resetButton.setOnAction(event -> {
 			filteredList.setPredicate(null);
 			artistFilterField.clear();
+			titleFilterField.clear();
 			toggle.selectToggle(rbBoth);
 			minYearSpinner.getValueFactory().setValue(1950);
 			filterPane.setExpanded(false);
@@ -150,8 +167,10 @@ public class Exercise5 extends Application {
 		MyVBox yearBox = new MyVBox(new Label("Year filter:"), new HBox(new MyVBox(new Label("From:")), new MyVBox(minYearSpinner)));
 		MyVBox artistBox = new MyVBox(new Label("Artist filter:"), artistFilterField);
 		MyVBox genreBox = new MyVBox(new Label("Genre filter:"), genreListView);
+		MyVBox titleBox = new MyVBox(new Label("Title filter:"), titleFilterField);
 
 		filters.add(artistBox, 0, 0);
+		filters.add(titleBox, 0, 1);
 		filters.add(typeBox, 0, 2);
 		filters.add(yearBox, 0, 3);
 		filters.add(resetButton, 0, 4);
@@ -184,7 +203,7 @@ public class Exercise5 extends Application {
 	}
 
 	private void updateFilters() {
-		filteredList.setPredicate(artistFilter.and(yearFilter).and(typeFilter).and(genreFilter));
+		filteredList.setPredicate(artistFilter.and(yearFilter).and(typeFilter).and(genreFilter).and(titleFilter));
 	}
 
 	static class MyVBox extends VBox {
