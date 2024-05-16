@@ -71,15 +71,14 @@ public class Exercise5 extends Application {
 	private final Predicate<Recording> artistFilter = new Predicate<>() {
 		@Override
 		public boolean test(Recording recording) {
-
-			var value = artistFilterField.getText();
-
-			if (value == null || value.isEmpty()) {
-				return true;
+			String filterText = artistFilterField.getText();
+			if (filterText == null || filterText.isEmpty()) {
+				return true; // no filter applied
 			}
-			return recording.getArtist().toUpperCase().startsWith(value.toUpperCase());
+			return recording.getArtist().toLowerCase().startsWith(filterText.toLowerCase());
 		}
 	};
+
 
 	private final Predicate<Recording> titleFilter = new Predicate<>() {
 		@Override
