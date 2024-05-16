@@ -18,7 +18,7 @@ import javafx.stage.Stage;
 
 import java.util.Set;
 import java.util.function.Predicate;
-//asd
+
 public class Exercise5 extends Application {
 
 	private final Database db = new Database();
@@ -52,7 +52,6 @@ public class Exercise5 extends Application {
 		}
 	};
 
-
 	private final Predicate<Recording> typeFilter = new Predicate<>() {
 		@Override
 		public boolean test(Recording recording) {
@@ -72,9 +71,9 @@ public class Exercise5 extends Application {
 	private final Predicate<Recording> artistFilter = new Predicate<>() {
 		@Override
 		public boolean test(Recording recording) {
-			String filterText = artistFilterField.getText();
+			String filterText = artistFilterField.getText().trim();
 			if (filterText == null || filterText.isEmpty()) {
-				return true;
+				return true; // no filter applied
 			}
 			return recording.getArtist().toLowerCase().startsWith(filterText.toLowerCase());
 		}
@@ -121,15 +120,15 @@ public class Exercise5 extends Application {
 
 		minYearSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1950, 2024, 1950));
 		minYearSpinner.valueProperty().addListener((observableValue, oldValue, newValue) -> {
-			if(minYearSpinner.getValue() > maxYearSpinner.getValue())
-				maxYearSpinner.getValueFactory().setValue(minYearSpinner.getValue());
+			if(minYearSpinner.getValue() >= maxYearSpinner.getValue())
+				maxYearSpinner.getValueFactory().setValue(minYearSpinner.getValue() +1);
 			updateFilters();
 		});
 		minYearSpinner.setId("minSpinner");
 		maxYearSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1950, 2024, 2024));
 		maxYearSpinner.valueProperty().addListener((observableValue, oldValue, newValue) -> {
-			if(maxYearSpinner.getValue() < minYearSpinner.getValue())
-				minYearSpinner.getValueFactory().setValue(maxYearSpinner.getValue());
+			if(maxYearSpinner.getValue() <= minYearSpinner.getValue())
+				minYearSpinner.getValueFactory().setValue(maxYearSpinner.getValue() +1);
 			updateFilters();
 		});
 		maxYearSpinner.setId("maxSpinner");
