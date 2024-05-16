@@ -48,7 +48,6 @@ public class Exercise5 extends Application {
 	private final Predicate<Recording> yearFilter = new Predicate<>() {
 		@Override
 		public boolean test(Recording recording) {
-
 			return recording.getYear() >= minYearSpinner.getValue() && recording.getYear() <= maxYearSpinner.getValue();
 		}
 	};
