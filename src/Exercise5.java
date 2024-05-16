@@ -18,7 +18,7 @@ import javafx.stage.Stage;
 
 import java.util.Set;
 import java.util.function.Predicate;
-
+//asd
 public class Exercise5 extends Application {
 
 	private final Database db = new Database();
@@ -51,6 +51,7 @@ public class Exercise5 extends Application {
 			return recording.getYear() >= minYearSpinner.getValue() && recording.getYear() < maxYearSpinner.getValue();
 		}
 	};
+
 
 	private final Predicate<Recording> typeFilter = new Predicate<>() {
 		@Override

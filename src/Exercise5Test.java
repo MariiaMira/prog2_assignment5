@@ -26,7 +26,6 @@ import static org.junit.jupiter.api.Assertions.*;
 @ExtendWith(ApplicationExtension.class)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class Exercise5Test {
-	//hejsan
 	private static final String UPDATED_DATE = "2024-03-27";
 	//
 	private static final String RESET_BUTTON = "#resetButton";
