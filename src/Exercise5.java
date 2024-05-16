@@ -48,7 +48,7 @@ public class Exercise5 extends Application {
 	private final Predicate<Recording> yearFilter = new Predicate<>() {
 		@Override
 		public boolean test(Recording recording) {
-			return recording.getYear() >= minYearSpinner.getValue() && recording.getYear() < maxYearSpinner.getValue();
+			return recording.getYear() >= minYearSpinner.getValue() && recording.getYear() <= maxYearSpinner.getValue();
 		}
 	};
 
@@ -74,7 +74,7 @@ public class Exercise5 extends Application {
 		public boolean test(Recording recording) {
 			String filterText = artistFilterField.getText();
 			if (filterText == null || filterText.isEmpty()) {
-				return true; // no filter applied
+				return true;
 			}
 			return recording.getArtist().toLowerCase().startsWith(filterText.toLowerCase());
 		}
