@@ -28,7 +28,7 @@ public class Exercise5 extends Application {
 	private final GridPane filters = new GridPane();
 	private final TitledPane filterPane = new TitledPane("Filter", filters);
 
-	private final TableView<Recording> table = new TableView<>();
+	private final TableView<Recording> table = new TableView<>(filteredList);
 
 	private final Spinner<Integer> minYearSpinner = new Spinner<>();
 	private final Spinner<Integer> maxYearSpinner = new Spinner<>();
@@ -71,8 +71,8 @@ public class Exercise5 extends Application {
 	private final Predicate<Recording> artistFilter = new Predicate<>() {
 		@Override
 		public boolean test(Recording recording) {
-			String filterText = artistFilterField.getText().trim();
-			if (filterText == null || filterText.isEmpty()) {
+			var filterText = artistFilterField.getText();
+			if (filterText == null ||filterText.isEmpty()) {
 				return true; // no filter applied
 			}
 			return recording.getArtist().toLowerCase().startsWith(filterText.toLowerCase());
@@ -120,25 +120,25 @@ public class Exercise5 extends Application {
 
 		minYearSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1950, 2024, 1950));
 		minYearSpinner.valueProperty().addListener((observableValue, oldValue, newValue) -> {
-			if(minYearSpinner.getValue() >= maxYearSpinner.getValue())
-				maxYearSpinner.getValueFactory().setValue(minYearSpinner.getValue() +1);
+			if(minYearSpinner.getValue() > maxYearSpinner.getValue())
+				maxYearSpinner.getValueFactory().setValue(minYearSpinner.getValue());
 			updateFilters();
 		});
 		minYearSpinner.setId("minSpinner");
 		maxYearSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1950, 2024, 2024));
 		maxYearSpinner.valueProperty().addListener((observableValue, oldValue, newValue) -> {
-			if(maxYearSpinner.getValue() <= minYearSpinner.getValue())
-				minYearSpinner.getValueFactory().setValue(maxYearSpinner.getValue() +1);
+			if(maxYearSpinner.getValue() < minYearSpinner.getValue())
+				minYearSpinner.getValueFactory().setValue(maxYearSpinner.getValue());
 			updateFilters();
 		});
 		maxYearSpinner.setId("maxSpinner");
 
-
 		table.setId("table");
-		table.setItems(filteredList);
-		TableColumn<Recording, String> titleC = new TableColumn<Recording, String>("Title");
+		//table.setItems(filteredList);
+
+		TableColumn<Recording, String> titleC = new TableColumn<>("Title");
 		titleC.setCellValueFactory(new PropertyValueFactory<>("title"));
-		TableColumn<Recording, String> artistC = new TableColumn<Recording, String>("Artist");
+		TableColumn<Recording, String> artistC = new TableColumn<>("Artist");
 		artistC.setCellValueFactory(new PropertyValueFactory<>("artist"));
 		TableColumn<Recording, Integer> yearC = new TableColumn<>("Year");
 		yearC.setCellValueFactory(new PropertyValueFactory<>("year"));
@@ -147,7 +147,9 @@ public class Exercise5 extends Application {
 		TableColumn<Recording, Set<String>> genreC = new TableColumn<>("Genre");
 		genreC.setCellValueFactory(new PropertyValueFactory<>("genre"));
 
-		table.getColumns().setAll(titleC,artistC, yearC, typeC, genreC);
+		table.getColumns().addAll(artistC, titleC, yearC, typeC, genreC);
+
+
 
 		Button resetButton = new Button("Reset filters");
 		resetButton.setId("resetButton");
@@ -215,9 +217,9 @@ public class Exercise5 extends Application {
 	}
 
 	private void updateFilters() {
-		filteredList.setPredicate(artistFilter.and(yearFilter).and(typeFilter).and(genreFilter).and(titleFilter));
-		System.out.println("Filtered List: " + filteredList);
-		System.out.println(filteredList.size());
+		filteredList.setPredicate(artistFilter.and(titleFilter).and(yearFilter).and(typeFilter).and(genreFilter));
+		//System.out.println("Filtered List: " + filteredList);
+		//System.out.println(filteredList.size());
 	}
 
 	static class MyVBox extends VBox {
