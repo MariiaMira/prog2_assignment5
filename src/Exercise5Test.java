@@ -1,345 +1,233 @@
+import javafx.application.Application;
+import javafx.collections.FXCollections;
+import javafx.collections.ListChangeListener;
+import javafx.collections.ObservableList;
+import javafx.collections.ObservableSet;
 import javafx.collections.transformation.FilteredList;
-import javafx.scene.control.Spinner;
-import javafx.scene.control.SpinnerValueFactory;
-import javafx.scene.control.TextField;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.Node;
+import javafx.scene.Scene;
+import javafx.scene.control.*;
+import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
-import org.junit.jupiter.api.*;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.testfx.api.FxAssert;
-import org.testfx.api.FxRobot;
-import org.testfx.api.FxToolkit;
-import org.testfx.framework.junit5.ApplicationExtension;
-import org.testfx.matcher.control.TableViewMatchers;
-import org.testfx.service.query.NodeQuery;
 
-import java.lang.reflect.Field;
-import java.util.Map;
-import java.util.Properties;
-import java.util.concurrent.TimeoutException;
-import java.util.function.Consumer;
+import java.util.Set;
+import java.util.function.Predicate;
 
-import static org.hamcrest.Matchers.allOf;
-import static org.hamcrest.Matchers.not;
-import static org.junit.jupiter.api.Assertions.*;
+public class Exercise5 extends Application {
 
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@ExtendWith(ApplicationExtension.class)
-@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-class Exercise5Test {
-	//
-	private static final String UPDATED_DATE = "2024-03-27";
-	//
-	private static final String RESET_BUTTON = "#resetButton";
-	private static final String TABLE = "#table";
-	private static final String FILTER_PANE = "#filters";
-	private static final String MAX_SPINNER = "#maxSpinner";
-	private static final String MIN_SPINNER = "#minSpinner";
-	private static final String ARTIST_FIELD = "#artistField";
-	private static final String TITLE_FIELD = "#titleField";
-	private static final String RB_BOTH = "#rbBoth";
-	private static final String RB_CD = "#rbCD";
-	private static final String RB_LP = "#rbLP";
-	private static final int UNFILTERED_COUNT = 504;
+	private final Database db = new Database();
+	private final ObservableList<Recording> recordings = FXCollections.observableArrayList(db.getRecordings());
+	private final FilteredList<Recording> filteredList = new FilteredList<>(recordings, predicate -> true);
 
-	private static final int MAX_SPINNER_MAX_YEAR = 2024;
+	private final GridPane filters = new GridPane();
+	private final TitledPane filterPane = new TitledPane("Filter", filters);
 
-	private static final int MIN_SPINNER_MIN_YEAR = 1950;
-	//
-	private static final Object[] DANGELO_VOODOO = {"D'Angelo", "Voodoo", 2000, "CD", "[Funk, Hip Hop, Soul]"};
-	private static final Object[] KANYE_DARK_FANTASY = {"Kanye West", "My Beautiful Dark Twisted Fantasy", 2010, "CD", "[Hip Hop]"};
-	private static final Object[] BEACH_BOYS_SMILE = {"The Beach Boys", "The Smile Sessions", 2011, "LP", "[Rock]"};
-	private static final Object[] VIAGRA_BOYS_STREET_WORMS = {"Viagra Boys", "Street Worms", 2018, "CD", "[Rock]"};
-	private static final Object[] VIAGRA_BOYS_WELFARE_JAZZ = {"Viagra Boys", "Welfare Jazz", 2021, "LP", "[Rock]"};
-	private static final Object[] VIAGRA_BOYS_CAVE_WORLD = {"Viagra Boys", "Cave World", 2022, "CD", "[Rock]"};
-	private static final Object[] IDLES_TANGK = {"IDLES", "TANGK", 2024, "CD", "[Rock]"};
-	//
-	private Stage stage;
-	private FilteredList<Recording> filteredList;
-	private FxRobot robot;
-	private Exercise5 app;
-	private boolean allNamedControlsFound;
-	private NodeQuery table;
-	private int lastSuccessfulStep = -1;
+	private final TableView<Recording> table = new TableView<>();
 
-	@BeforeAll
-	static void beforeAll() {
-		Properties properties = System.getProperties();
-		if (properties.get("os.name").equals("Mac OS X")) {
-			System.setProperty("java.awt.headless", "false");
-			System.setProperty("testfx.headless", "false");
-		} else {
-			System.setProperty("java.awt.headless", "true");
-			System.setProperty("testfx.headless", "true");
+	private final Spinner<Integer> minYearSpinner = new Spinner<>();
+	private final Spinner<Integer> maxYearSpinner = new Spinner<>();
+
+	private final ListView<String> genreListView = new ListView<>(FXCollections.observableList(db.getGenres()));
+
+	private final TextField artistFilterField = new TextField();
+	private final TextField titleFilterField = new TextField();
+
+	private final ToggleGroup toggle = new ToggleGroup();
+	private final RadioButton rbCD = new RadioButton("CD");
+	private final RadioButton rbLP = new RadioButton("LP");
+	private final RadioButton rbBoth = new RadioButton("Both");
+
+	private final ObservableSet<String> selectedGenres = FXCollections.observableSet();
+
+	private final Predicate<Recording> yearFilter = new Predicate<>() {
+		@Override
+		public boolean test(Recording recording) {
+			return (recording.getYear() > minYearSpinner.getValue() && recording.getYear() < maxYearSpinner.getValue());
 		}
-		System.setProperty("testfx.robot", "glass");
-		System.setProperty("prism.order", "sw");
-		System.setProperty("prism.text", "t2k");
-		System.setProperty("headless.geometry", "1600x1200-32");
-	}
+	};
 
-	@BeforeEach
-	public void setupClass(FxRobot robot) throws Exception {
+	private final Predicate<Recording> typeFilter = new Predicate<>() {
+		@Override
+		public boolean test(Recording recording) {
+			var selected = toggle.getSelectedToggle();
 
-		this.stage = FxToolkit.registerPrimaryStage();
+			if (selected == null)
+				return true;
+			else if (selected.equals(rbCD))
+				return recording.getType().equals("CD");
+			else if (selected.equals(rbLP))
+				return recording.getType().equals("LP");
+			else
+				return true;
+		}
+	};
 
-		this.app = (Exercise5) FxToolkit.setupApplication(Exercise5.class);
-		assertNotNull(this.app, "Fel: kunde inte starta applikationen.");
+	private final Predicate<Recording> artistFilter = new Predicate<>() {
+		@Override
+		public boolean test(Recording recording) {
 
-		this.filteredList = getFilteredListUsingReflection();
-		assertNotNull(this.filteredList, "Fel: kunde inte hitta medlemsvariabeln för FilteredList.");
+			var value = artistFilterField.getText();
 
-		this.robot = robot;
-		assertNotNull(this.robot, "Fel: internt fel i testramverket.");
-
-		this.table = robot.lookup(TABLE);
-	}
-
-	@AfterAll
-	void tearDown() throws TimeoutException {
-		FxToolkit.cleanupStages();
-	}
-
-	private void _decrementSpinner(Spinner<Integer> spinner, int steps) {
-		spinner.getValueFactory().decrement(steps);
-	}
-
-	private void _incrementSpinner(Spinner<Integer> spinner, int steps) {
-		spinner.getValueFactory().increment(steps);
-	}
-
-	private void _setSpinnerValue(Spinner<Integer> spinner, int value) {
-		spinner.getValueFactory().setValue(value);
-	}
-
-	private void _testFilterAndReset(Consumer<Void> function) {
-		assertEquals(UNFILTERED_COUNT, filteredList.size());
-
-		robot.clickOn(FILTER_PANE);
-
-		function.accept(null);
-
-		robot.clickOn(RESET_BUTTON);
-	}
-
-	private void _validateArtistTextField(String fieldName, String query, Object[] expectedRow, int expectedCount) {
-		_validateTextField(fieldName, query, expectedRow, expectedCount, "artist");
-	}
-
-	private void _validateTextField(String fieldName, String query, Object[] expectedRow, int expectedCount, String field) {
-		var textField = (TextField) robot.lookup(fieldName).query();
-		textField.clear();
-		robot.clickOn(fieldName);
-		robot.write(query);
-
-		var baseMessage = "Sökning på %s gav för %s antal träffar.\n";
-		if (expectedCount > filteredList.size())
-			assertEquals(expectedCount, filteredList.size(), String.format(baseMessage, field, "litet"));
-		else if (expectedCount < filteredList.size())
-			assertEquals(expectedCount, filteredList.size(), String.format(baseMessage, field, "stort"));
-
-		var matcher = expectedCount > 0 ? TableViewMatchers.containsRow(expectedRow) : not(TableViewMatchers.containsRow(expectedRow));
-
-		FxAssert.verifyThat(table, matcher);
-	}
-
-	private void _validateTitleTextField(String fieldName, String query, Object[] expectedRow, int expectedCount) {
-		_validateTextField(fieldName, query, expectedRow, expectedCount, "titel");
-	}
-
-	@SuppressWarnings("unchecked")
-	private FilteredList<Recording> getFilteredListUsingReflection() throws IllegalAccessException {
-
-		for (Field declaredField : Exercise5.class.getDeclaredFields()) {
-			if (declaredField.getType().isAssignableFrom(FilteredList.class)) {
-				if (declaredField.getType().equals(FilteredList.class)) {
-					declaredField.setAccessible(true);
-					return (FilteredList<Recording>) declaredField.get(app);
-				}
+			if (value == null || value.isEmpty()) {
+				return true;
 			}
+			return recording.getArtist().toUpperCase().startsWith(value.toUpperCase());
 		}
+	};
 
-		return null;
-	}
+	private final Predicate<Recording> titleFilter = new Predicate<>() {
+		@Override
+		public boolean test(Recording recording) {
 
-	@Test
-	@Order(0)
-	@DisplayName("Information")
-	void __version() {
-		System.out.printf("Test uppdaterat %s%n", UPDATED_DATE);
-		lastSuccessfulStep = 0;
-	}
+			var value = titleFilterField.getText();
 
-	@Test
-	@DisplayName("Verifiera att kontroller har id satta med setId.")
-	@Order(5)
-	void test00_hasCorrectlyNamedControls() {
-		Assumptions.assumeTrue(lastSuccessfulStep == 0);
-
-		var controls = Map.of(
-				RESET_BUTTON, "Knappen reset"
-				, TABLE, "Tabellen (TableView)"
-				, FILTER_PANE, "Panelen med filter"
-				, MAX_SPINNER, "Spinner för högsta år"
-				, MIN_SPINNER, "Spinner för lägsta år"
-				, ARTIST_FIELD, "Textinmatningsfältet för artist"
-				, TITLE_FIELD, "Textinmatningsfältet för titel"
-				, RB_BOTH, "Radioknapp för både CD & LP"
-				, RB_CD, "Radioknapp för CD"
-				, RB_LP, "Radioknapp för LP"
-		);
-
-		for (var entry : controls.entrySet()) {
-			var node = robot.lookup(entry.getKey()).tryQuery();
-			assertTrue(node.isPresent(), String.format("%s kunde inte hittas. Den ska ha id '%s' satt med setId.", entry.getValue(), entry.getKey().substring(1)));
+			if (value == null || value.isEmpty()) {
+				return true;
+			}
+			return recording.getTitle().toUpperCase().startsWith(value.toUpperCase());
 		}
+	};
 
-		allNamedControlsFound = true;
-		lastSuccessfulStep = 5;
-	}
+	private final Predicate<Recording> genreFilter = new Predicate<>() {
+		@Override
+		public boolean test(Recording recording) {
+			if (selectedGenres.isEmpty())
+				return true;
+			for (String selectedGenre : selectedGenres) {
+				if (recording.getGenre().contains(selectedGenre))
+					return true;
+			}
+			return false;
+		}
+	};
 
-	@Test
-	@Order(10)
-	@DisplayName("Test av filter: artist")
-	void testArtist() {
-		Assumptions.assumeTrue(allNamedControlsFound, "Testet avbröts eftersom alla namngivna kontroller inte kunde hittas.");
-		Assumptions.assumeTrue(lastSuccessfulStep == 5, "Avbröt eftersom föregående steg misslyckades.");
+	@Override
+	public void start(Stage primaryStage) {
 
-		_testFilterAndReset(unused -> {
-			_validateArtistTextField(ARTIST_FIELD, "D", DANGELO_VOODOO, 19);
-			_validateArtistTextField(ARTIST_FIELD, "D'", DANGELO_VOODOO, 1);
+		rbCD.setId("rbCD");
+		rbLP.setId("rbLP");
+		rbBoth.setId("rbBoth");
 
-			_validateArtistTextField(ARTIST_FIELD, "I", IDLES_TANGK, 3);
-			_validateArtistTextField(ARTIST_FIELD, "Id", IDLES_TANGK, 1);
+		artistFilterField.textProperty().addListener((observable, oldValue, newValue) -> updateFilters());
+		artistFilterField.setId("artistField");
+		titleFilterField.textProperty().addListener((observable, oldValue, newValue) -> updateFilters());
+		titleFilterField.setId("titleField");
 
-			_validateArtistTextField(ARTIST_FIELD, "V", VIAGRA_BOYS_STREET_WORMS, 14);
-			_validateArtistTextField(ARTIST_FIELD, "VI", VIAGRA_BOYS_WELFARE_JAZZ, 3);
-			_validateArtistTextField(ARTIST_FIELD, "VIa", VIAGRA_BOYS_CAVE_WORLD, 3);
+		minYearSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1950, 2024, 1950));
+		minYearSpinner.valueProperty().addListener((observableValue, oldValue, newValue) -> {
+			if(minYearSpinner.getValue() > maxYearSpinner.getValue())
+				maxYearSpinner.getValueFactory().setValue(minYearSpinner.getValue());
+			updateFilters();
+		});
+		minYearSpinner.setId("minSpinner");
+		maxYearSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1950, 2024, 2024));
+		maxYearSpinner.valueProperty().addListener((observableValue, oldValue, newValue) -> {
+			if(maxYearSpinner.getValue() < minYearSpinner.getValue())
+				minYearSpinner.getValueFactory().setValue(maxYearSpinner.getValue());
+			updateFilters();
+		});
+		maxYearSpinner.setId("maxSpinner");
+
+
+		table.setId("table");
+		table.setItems(filteredList);
+		TableColumn<Recording, String> titleC = new TableColumn<Recording, String>("Title");
+		titleC.setCellValueFactory(new PropertyValueFactory<>("title"));
+		TableColumn<Recording, String> artistC = new TableColumn<Recording, String>("Artist");
+		artistC.setCellValueFactory(new PropertyValueFactory<>("artist"));
+		TableColumn<Recording, Integer> yearC = new TableColumn<>("Year");
+		yearC.setCellValueFactory(new PropertyValueFactory<>("year"));
+		TableColumn<Recording, String> typeC = new TableColumn<>("Type");
+		typeC.setCellValueFactory(new PropertyValueFactory<>("type"));
+		TableColumn<Recording, Set<String>> genreC = new TableColumn<>("Genre");
+		genreC.setCellValueFactory(new PropertyValueFactory<>("genre"));
+
+		table.getColumns().setAll(titleC,artistC, yearC, typeC, genreC);
+
+		Button resetButton = new Button("Reset filters");
+		resetButton.setId("resetButton");
+		resetButton.setOnAction(event -> {
+			filteredList.setPredicate(null);
+			artistFilterField.clear();
+			titleFilterField.clear();
+			toggle.selectToggle(rbBoth);
+			minYearSpinner.getValueFactory().setValue(1950);
+			maxYearSpinner.getValueFactory().setValue(2024);
+			filterPane.setExpanded(false);
+			selectedGenres.clear();
+			genreListView.getSelectionModel().clearSelection();
 		});
 
-		lastSuccessfulStep = 10;
-	}
+		toggle.getToggles().addAll(rbCD, rbLP, rbBoth);
+		toggle.selectedToggleProperty().addListener((observable, oldValue, newValue) -> updateFilters());
+		toggle.selectToggle(rbBoth);
+		rbBoth.setSelected(true);
 
-	@Test
-	@Order(20)
-	@DisplayName("Test av filter: titel")
-	void testTitle() {
-		Assumptions.assumeTrue(allNamedControlsFound, "Testet avbröts eftersom alla namngivna kontroller inte kunde hittas.");
-		Assumptions.assumeTrue(lastSuccessfulStep == 10, "Avbröt eftersom föregående steg misslyckades.");
-
-		_testFilterAndReset(unused -> {
-			_validateTitleTextField(TITLE_FIELD, "Street Worms", VIAGRA_BOYS_STREET_WORMS, 1);
-			_validateTitleTextField(TITLE_FIELD, "Welfare Jazz", VIAGRA_BOYS_WELFARE_JAZZ, 1);
-			_validateTitleTextField(TITLE_FIELD, "Cave World", VIAGRA_BOYS_CAVE_WORLD, 1);
-
-			_validateTitleTextField(TITLE_FIELD, "TANGK", IDLES_TANGK, 1);
-			_validateTitleTextField(TITLE_FIELD, "TANGKX", IDLES_TANGK, 0);
+		genreListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+		genreListView.getSelectionModel().getSelectedItems().addListener((ListChangeListener<String>) c -> {
+			selectedGenres.clear();
+			selectedGenres.addAll(genreListView.getSelectionModel().getSelectedItems());
+			updateFilters();
 		});
 
-		lastSuccessfulStep = 20;
+		MyVBox typeBox = new MyVBox(new Label("Type filter:"), new HBox(20, rbCD, rbLP, rbBoth));
+		MyVBox yearBox = new MyVBox(new Label("Year filter:"), new HBox(new MyVBox(new Label("From:")), new MyVBox(minYearSpinner)), new HBox(new MyVBox(new Label("To:")), new MyVBox(maxYearSpinner)));
+		MyVBox artistBox = new MyVBox(new Label("Artist filter:"), artistFilterField);
+		MyVBox genreBox = new MyVBox(new Label("Genre filter:"), genreListView);
+		MyVBox titleBox = new MyVBox(new Label("Title filter:"), titleFilterField);
+
+		filters.add(artistBox, 0, 0);
+		filters.add(titleBox, 0, 1);
+		filters.add(typeBox, 0, 2);
+		filters.add(yearBox, 0, 3);
+		filters.add(resetButton, 0, 4);
+		filters.add(genreBox, 1, 0, 2, 5);
+
+		filters.setPadding(new Insets(10));
+		filters.setHgap(20);
+		filters.setVgap(20);
+
+		filterPane.setExpanded(false);
+		filterPane.setId("filters");
+
+		Label title = new Label("Record Collection");
+		title.setFont(Font.font("Arial", FontWeight.BOLD, 36));
+		FlowPane fp = new FlowPane(title);
+		fp.setAlignment(Pos.CENTER);
+
+		BorderPane bp = new BorderPane();
+		bp.setTop(fp);
+		bp.setCenter(table);
+
+		bp.setBottom(filterPane);
+
+		Scene scene = new Scene(bp);
+		primaryStage.setWidth(1200);
+		primaryStage.setHeight(800);
+		primaryStage.setTitle("Record Collection");
+		primaryStage.setScene(scene);
+		primaryStage.show();
 	}
 
-	@Test
-	@Order(30)
-	@DisplayName("Test av filter: typ")
-	void testType() {
-		Assumptions.assumeTrue(allNamedControlsFound, "Testet avbröts eftersom alla namngivna kontroller inte kunde hittas.");
-		Assumptions.assumeTrue(lastSuccessfulStep == 20, "Avbröt eftersom föregående steg misslyckades.");
+	private void updateFilters() {
+		filteredList.setPredicate(artistFilter.and(yearFilter).and(typeFilter).and(genreFilter).and(titleFilter));
 
-		var hasCd = TableViewMatchers.hasTableCell("CD");
-		var hasLp = TableViewMatchers.hasTableCell("LP");
-		var hasBothCdAndLp = allOf(hasCd, hasLp);
-
-    	_testFilterAndReset(unused -> {
-			robot.clickOn(RB_BOTH);
-			robot.clickOn(RB_CD);
-			assertFalse(hasLp.matches(table));
-			robot.clickOn(RB_LP);
-
-			assertFalse(hasCd.matches(table));
-			robot.clickOn(RB_BOTH);
-			assertEquals(UNFILTERED_COUNT, filteredList.size(), "Fel: tabellen är fortfarande filtrerad efter klick på reset.");
-			FxAssert.verifyThat(table, hasBothCdAndLp);
-		});
-
-		lastSuccessfulStep = 30;
 	}
 
-	@SuppressWarnings("unchecked")
-	@Test
-	@Order(40)
-	@DisplayName("Test av filter: år")
-	void testYear() {
-		Assumptions.assumeTrue(allNamedControlsFound, "Testet avbröts eftersom alla namngivna kontroller inte kunde hittas.");
-		Assumptions.assumeTrue(lastSuccessfulStep == 30, "Avbröt eftersom föregående steg misslyckades.");
+	static class MyVBox extends VBox {
 
-		_testFilterAndReset(unused -> {
-			var minSpinner = (Spinner<Integer>) robot.lookup(MIN_SPINNER).query();
-			var maxSpinner = (Spinner<Integer>) robot.lookup(MAX_SPINNER).query();
-
-			var maxSpinnerValueFactory = (SpinnerValueFactory.IntegerSpinnerValueFactory) maxSpinner.getValueFactory();
-			assertEquals(MAX_SPINNER_MAX_YEAR, maxSpinnerValueFactory.getMax(),
-					String.format("Det högsta värdet för spinnern för högst år är fel. Det borde vara: %d, men var: %d%n",
-							MAX_SPINNER_MAX_YEAR, maxSpinnerValueFactory.getMax()));
-
-			var minSpinnerValueFactory = (SpinnerValueFactory.IntegerSpinnerValueFactory) minSpinner.getValueFactory();
-			assertEquals(MIN_SPINNER_MIN_YEAR, minSpinnerValueFactory.getMin(),
-					String.format("Det lägsta värdet för spinnern för lägst år är fel. Det borde vara: %d, men var: %d%n",
-							MIN_SPINNER_MIN_YEAR, minSpinnerValueFactory.getMin()));
-
-			_setSpinnerValue(minSpinner, 2010);
-			_setSpinnerValue(maxSpinner, 2024);
-
-			assertEquals(6, filteredList.size());
-
-			FxAssert.verifyThat(table, TableViewMatchers.containsRow(KANYE_DARK_FANTASY));
-			FxAssert.verifyThat(table, TableViewMatchers.containsRow(BEACH_BOYS_SMILE));
-			FxAssert.verifyThat(table, TableViewMatchers.containsRow(VIAGRA_BOYS_STREET_WORMS));
-			FxAssert.verifyThat(table, TableViewMatchers.containsRow(VIAGRA_BOYS_WELFARE_JAZZ));
-			FxAssert.verifyThat(table, TableViewMatchers.containsRow(VIAGRA_BOYS_CAVE_WORLD));
-			FxAssert.verifyThat(table, TableViewMatchers.containsRow(IDLES_TANGK));
-
-			_setSpinnerValue(minSpinner, 2022);
-			_setSpinnerValue(maxSpinner, 2023);
-			_decrementSpinner(maxSpinner, 2);
-
-			assertEquals(2021, maxSpinner.getValue(), "Testar att värdet för högsta året är 2021 efter att ha startat på 2023 och sänkts två steg.");
-			assertEquals(2021, minSpinner.getValue(), "Testar att värdet för lägsta året är 2021 efter att ha startat på 2022 och den andra spinnern har sänkts två steg från 2023 till 2021.");
-			assertEquals(1, filteredList.size(), "Antalet poster i den filtrerade listan stämmer inte.");
-			FxAssert.verifyThat(table, TableViewMatchers.containsRow(VIAGRA_BOYS_WELFARE_JAZZ));
-
-			_incrementSpinner(minSpinner, 1);
-
-			assertEquals(2022, minSpinner.getValue(), "Testar att värdet för lägsta året är 2022 efter att ha startat på 2021 och ökats ett steg.");
-			assertEquals(2022, maxSpinner.getValue(), "Testar att värdet för högsta året är 2022 efter att ha startat på 2021 och den andra spinnern har ökats ett steg.");
-			assertEquals(1, filteredList.size(), "Antalet poster i den filtrerade listan stämmer inte.");
-			FxAssert.verifyThat(table, TableViewMatchers.containsRow(VIAGRA_BOYS_CAVE_WORLD));
-
-			robot.clickOn(FILTER_PANE);
-		});
-
-		lastSuccessfulStep = 40;
-	}
-
-	@Test
-	@Order(50)
-	@DisplayName("Test av filter: genre")
-	void testGenre() {
-		Assumptions.assumeTrue(allNamedControlsFound, "Testet avbröts eftersom alla namngivna kontroller inte kunde hittas.");
-		Assumptions.assumeTrue(lastSuccessfulStep == 40, "Avbröt eftersom föregående steg misslyckades.");
-
-		_testFilterAndReset(f -> {
-
-			robot.clickOn("Jazz");
-			assertEquals(19, filteredList.size());
-			assertTrue(filteredList.stream().allMatch(recording -> recording.getGenre().contains("Jazz")));
-
-			robot.clickOn("Rock");
-			assertEquals(355, filteredList.size());
-
-			robot.clickOn("Funk");
-			assertEquals(80, filteredList.size());
-		});
-
-		lastSuccessfulStep = 50;
+		MyVBox(Node... items) {
+			super(items);
+			setBorder(new Border(new BorderStroke(Color.BLACK, BorderStrokeStyle.SOLID, CornerRadii.EMPTY, BorderWidths.DEFAULT)));
+			setPadding(new Insets(10));
+			setSpacing(20);
+			setAlignment(Pos.CENTER);
+		}
 	}
 }
