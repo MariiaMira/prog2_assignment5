@@ -216,7 +216,8 @@ public class Exercise5 extends Application {
 
 	private void updateFilters() {
 		filteredList.setPredicate(artistFilter.and(yearFilter).and(typeFilter).and(genreFilter).and(titleFilter));
-
+		System.out.println("Filtered List: " + filteredList);
+		System.out.println(filteredList.size());
 	}
 
 	static class MyVBox extends VBox {
